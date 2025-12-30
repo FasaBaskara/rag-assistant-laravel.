@@ -15,7 +15,7 @@ class ProcessOnetDataNew extends Command
 {
     protected $signature = 'onet:process
                             {--type=all : Tipe data (all|occupations|tasks|technologies|skills|knowledge|relations|zones)}
-                            {--fresh : Hapus koleksi yang ada sebelum memproses}';
+                            {--fresh : Hapus koleksi yang ada sebelum memproses atau membuat baru}';
 
 
     protected $description = 'Proses data';
@@ -207,27 +207,23 @@ class ProcessOnetDataNew extends Command
         }
         $this->info('Related Occupation selesai diproses.');
     }
+
     public function processJurusan(string $apiUrl, string $apiToken): void
     {
         $this->line('Memproses jurusan...');
-
         try {
             $response = Http::withToken($apiToken)->get($apiUrl);
-
             if (!$response->successful() || !$response->json()['success']) {
                 $this->error('Gagal mengambil data dari API Jurusan. Cek URL dan Token Anda.');
                 Log::error('API Jurusan Gagal', ['status' => $response->status(), 'body' => $response->body()]);
                 return;
             }
-
             $jurusanData = $response->json()['data'];
             if (empty($jurusanData)) {
                 $this->warn('Tidak mengembalikan data.');
             }
-
             $bar = $this->output->createProgressBar(count($jurusanData));
             $bar->start();
-
             foreach ($jurusanData as $jurusan) {
                 $namaJurusanAwal = $jurusan['namapst'];
                 $parts = explode(' - ', $namaJurusanAwal);
@@ -239,7 +235,6 @@ class ProcessOnetDataNew extends Command
                     $bar->advance();
                     continue;
                 }
-
                 $payload = [
                     'nama_jurusan' => $namaJurusan,
                     'fakultas' => $jurusan['fakultas'],
@@ -250,7 +245,6 @@ class ProcessOnetDataNew extends Command
                 $this->embedAndUpsert($textToEmbed, $payload, self::COLLECTION_JURUSAN);
                 $bar->advance();
             }
-
             $bar->finish();
             $this->output->writeln('');
             $this->info('Jurusan selesai.');
@@ -311,12 +305,12 @@ class ProcessOnetDataNew extends Command
     {
         $this->warn('Menghapus dan membuat ulang koleksi di Qdrant...');
         $collections = [
-            // self::COLLECTION_OCCUPATIONS,
-            self::COLLECTION_TASKS,
+            self::COLLECTION_OCCUPATIONS,
+            // self::COLLECTION_TASKS,
             // self::COLLECTION_TECHNOLOGIES,
             // self::COLLECTION_SKILLS,
             // self::COLLECTION_KNOWLEDGE,
-            // self::COLLECTION_RELATIONS
+            // self::COLLECTION_RELATIONS,
             // self::COLLECTION_JURUSAN
         ];
         foreach ($collections as $collection) {

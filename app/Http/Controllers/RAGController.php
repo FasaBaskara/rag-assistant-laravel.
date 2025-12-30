@@ -45,13 +45,10 @@ class RAGController extends Controller
 
             if (empty($embeddingIndo) && empty($embeddingEng)) {
                 return response()->json([
-                   'success' => false,
+                    'success' => false,
                     'message' => 'Maaf, sistem tidak dapat memproses pertanyaan Anda. Silakan coba dengan kalimat yang berbeda.'
                 ], 422);
             }
-
-            Log::info('Embedding Indo: ' . count($embeddingIndo));
-            Log::info('Embedding English: ' . count($embeddingEng));
 
             $contexts = [];
             $contextText = "Tidak ada konteks yang relevan ditemukan.";
@@ -90,6 +87,21 @@ class RAGController extends Controller
                     $contexts[] = "Pekerjaan '{$item['payload']['occupation_title']}' membutuhkan skill '{$item['payload']['attribute_name']}'";
                 }
             }
+
+            $knowledgeContext = $this->qdrant->search($embeddingEng, 'knowledge', 3);
+            if (!empty($knowledgeContext)) {
+                foreach ($knowledgeContext as $item) {
+                    $contexts[] = "Untuk pekerjaan '{$item['payload']['occupation_title']}', diperlukan pengetahuan di bidang '{$item['payload']['attribute_name']}' dengan tingkat {$item['payload']['scale']}.";
+                }
+            }
+
+            $relationsContext = $this->qdrant->search($embeddingEng, 'relations', 3);
+            if (!empty($relationsContext)) {
+                foreach ($relationsContext as $item) {
+                    $contexts[] = "Pekerjaan '{$item['payload']['source_title']}' memiliki keterkaitan dengan pekerjaan '{$item['payload']['related_title']}'.";
+                }
+            }
+
 
 
 
